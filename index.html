@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SolarMeter — Dashboard Panel Surya</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='%23f59e0b'/%3E%3Cg stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M16 2v4M16 26v4M2 16h4M26 16h4M6.1 6.1l2.8 2.8M23.1 23.1l2.8 2.8M25.9 6.1l-2.8 2.8M8.9 23.1l-2.8 2.8'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ---------- Minimalist UI ---------- */
+:root{
+  --bg:#ffffff;--surface:#f8fafc;--ink:#0f172a;--muted:#64748b;
+  --line:#e2e8f0;--line-soft:#f1f5f9;--soft:#f1f5f9;--acc:#2563eb;
+  --c-v:#2563eb;--c-i:#0ea5e9;--c-b:#7c3aed;--c-p:#f59e0b;
+  --ok:#059669;--bad:#dc2626;
+  --r:12px;--r-sm:8px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f172a;--surface:#1e293b;--ink:#f8fafc;--muted:#94a3b8;
+    --line:#334155;--line-soft:#1e293b;--soft:#1e293b;--acc:#3b82f6;
+    --c-v:#60a5fa;--c-i:#22d3ee;--c-b:#a78bfa;--c-p:#fbbf24;
+    --ok:#34d399;--bad:#f87171;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f172a;--surface:#1e293b;--ink:#f8fafc;--muted:#94a3b8;
+  --line:#334155;--line-soft:#1e293b;--soft:#1e293b;--acc:#3b82f6;
+  --c-v:#60a5fa;--c-i:#22d3ee;--c-b:#a78bfa;--c-p:#fbbf24;
+  --ok:#34d399;--bad:#f87171;color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 'Poppins',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased}
+::selection{background:var(--acc);color:#fff}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;gap:24px;
+  background:var(--surface);color:var(--ink);padding:28px 20px 24px;
+  border-right:1px solid var(--line);z-index:5}
+.brand{display:flex;align-items:center;gap:12px;padding-bottom:24px;border-bottom:1px solid var(--line-soft)}
+.logo{display:grid;place-items:center;width:42px;height:42px;background:var(--acc);color:#fff;
+  border-radius:12px;flex:none}
+.logo .ic{width:22px;height:22px;stroke-width:2.4;stroke:#fff}
+.brand b{display:block;font-size:17px;font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.brand small{display:block;font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.nlbl{font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:0 4px;margin-bottom:10px}
+#tabs{display:flex;flex-direction:column;gap:8px}
+#tabs button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;background:transparent;
+  color:var(--muted);border:none;border-left:2px solid transparent;border-radius:0 10px 10px 0;
+  font:inherit;font-size:13px;font-weight:500;cursor:pointer;text-align:left;transition:all .15s ease}
+#tabs button .ic{width:17px;height:17px;flex:none;opacity:.7}
+#tabs button:hover{background:var(--line-soft);color:var(--ink)}
+#tabs button.act{background:var(--acc);color:#fff;border-left:2px solid #1d4ed8;
+  box-shadow:-4px 0 8px -2px rgba(37,99,235,.15)}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:16px}
+.sstat{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;background:var(--bg);
+  border:1px solid var(--line);border-radius:14px;font-size:11px;line-height:1.55;color:var(--muted)}
+.sstat .dot{margin-top:4px}
+#live{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;background:var(--bg);
+  border:1px solid var(--line);border-radius:12px;color:var(--ink);font:inherit;font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .15s ease}
+#live:hover{border-color:var(--acc);color:var(--acc)}
+#live:active{background:var(--line-soft)}
+.main{padding:32px 38px 70px;min-width:0}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:30px}
+h1{font-size:clamp(24px,3vw,34px);font-weight:700;letter-spacing:-.02em;margin:0;line-height:1.1;color:var(--ink)}
+.psub{margin:8px 0 0;color:var(--muted);font-size:14px;font-weight:400}
+.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.seg{display:inline-flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg button{border:none;background:transparent;color:var(--muted);padding:7px 14px;
+  font:inherit;font-size:12px;font-weight:500;cursor:pointer;border-radius:8px;transition:all .15s ease}
+.seg button:hover{color:var(--ink);background:var(--line-soft)}
+.seg button.act{background:var(--acc);color:#fff}
+.btn{display:inline-flex;align-items:center;gap:9px;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;color:var(--ink);padding:9px 14px;font:inherit;font-size:12px;font-weight:500;
+  cursor:pointer;transition:all .15s ease}
+.btn:hover{border-color:var(--acc);color:var(--acc);background:rgba(37,99,235,.04)}
+.btn:active{background:rgba(37,99,235,.08)}
+input[type=date].btn{font-family:inherit;text-transform:none;font-weight:500;letter-spacing:0;font-size:13px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:#0ea5e9}.dot.off{background:#cbd5e1}
+.banner{background:var(--bg);padding:14px 16px;border:1px solid var(--line);border-left:4px solid var(--acc);
+  border-radius:14px;font-size:13px;margin-bottom:24px;font-weight:500;color:var(--ink)}
+.banner.err{border-left-color:var(--bad);color:var(--bad)}
+.hidden{display:none}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:22px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:24px}
+.kpi .lbl{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;line-height:1.4}
+.kdot{width:10px;height:10px;background:var(--k,var(--muted));flex:none;border-radius:50%;border:1px solid var(--bg)}
+.kpi .val{font-size:30px;font-weight:600;letter-spacing:-.02em;margin-top:10px;line-height:1.1}
+.kpi .val small{font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-left:6px}
+.kpi.key{position:relative}
+.kpi.key .lbl{color:var(--muted)}
+.kpi.key .kdot{background:var(--acc);border-color:var(--acc)}
+.kpi.key .val{color:var(--ink)}
+.kpi.key .val small,.kpi.key .note{color:var(--muted)}
+.tag{font-size:8.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;
+  border-radius:6px;padding:2px 8px;line-height:1.3;color:rgba(15,23,42,.45)}
+.tag.today{background:var(--acc);color:#fff;border-color:var(--acc)}
+.stale{opacity:.55}
+.note{color:var(--muted);font-size:11px;margin-top:10px;line-height:1.55}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+.chead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px;
+  padding-bottom:12px;border-bottom:1px solid var(--line-soft)}
+.chead h2{font-size:12px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:.06em}
+.chead .hint{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.03em}
+.ch{position:relative;height:260px}
+.em{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);font-size:12px;font-weight:500;pointer-events:none}
+.em.on{display:grid}
+.tbl-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.tbl-head h2{font-size:12px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:.06em}
+.tbl-head h2 span{color:var(--muted);font-weight:500;font-size:11px;margin-left:6px;letter-spacing:.03em}
+.scroll{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:14px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:right;padding:11px 14px;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{position:sticky;top:0;background:var(--bg);color:var(--ink);font-weight:600;font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--line)}
+tbody tr{background:transparent;transition:background .15s ease}
+tbody tr:hover td{background:rgba(37,99,235,.03)}
+th[data-k]{cursor:pointer;user-select:none}
+th[data-dir="1"]::after{content:" ▲"}th[data-dir="-1"]::after{content:" ▼"}
+.cgrid{display:grid;grid-template-columns:1.02fr 1fr;gap:24px;align-items:start}
+.step-h{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.step-n{display:grid;place-items:center;width:30px;height:30px;background:var(--surface);color:var(--ink);
+  font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--line);flex:none}
+.step-h h2{font-size:12px;font-weight:600;margin:0;text-transform:uppercase;letter-spacing:.06em}
+.step-sub{margin-left:auto;font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.03em}
+.in{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--ink);
+  padding:11px 14px;font:inherit;font-size:13px;font-weight:500}
+.in:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+select.in{appearance:none;cursor:pointer;padding-right:34px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+  background-position:calc(100% - 18px) calc(50% + 1px),calc(100% - 12px) calc(50% + 1px);
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.lhead,.lrow{display:grid;grid-template-columns:1.5fr .6fr .8fr .8fr .8fr 38px;gap:10px;align-items:center}
+.lhead{font-size:10px;color:var(--muted);margin-bottom:12px;padding:0 14px;text-transform:uppercase;
+  letter-spacing:.08em;font-weight:600}
+.lrow{margin-bottom:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.lrow .in{background:transparent;border:1px solid var(--line-soft);padding:9px 11px;font-size:12.5px}
+.lrow .in:focus{background:var(--bg);border-color:var(--acc)}
+.lwh{text-align:right;font-size:13px;font-weight:600}
+.ib{padding:9px;justify-content:center;background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  border-radius:10px;font-size:16px;line-height:1;cursor:pointer;transition:all .15s ease}
+.ib:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
+.totbar{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px;background:var(--acc);
+  border-radius:18px;padding:18px 20px;box-shadow:0 4px 12px rgba(37,99,235,.18);color:#fff}
+.totbar .tl{display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  opacity:.9;margin-bottom:4px}
+.totbar b{font-size:26px;font-weight:600;letter-spacing:-.02em}
+.totbar small{font-size:11px;font-weight:500;opacity:.9;margin-left:5px}
+.totbar>div+div{border-left:1px solid rgba(255,255,255,.25);padding-left:16px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fld label{display:block;font-size:10px;color:var(--muted);margin-bottom:7px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;line-height:1.5}
+.fld.chk{display:flex;align-items:center;gap:10px;align-self:end;padding-bottom:10px;font-size:13px;font-weight:500}
+.fld.chk input{width:20px;height:20px;accent-color:var(--acc)}
+.hintx{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.chip{font-size:10px;font-weight:500;border:1px solid var(--line);border-radius:10px;padding:4px 10px;background:var(--bg);color:var(--ink);letter-spacing:.02em}
+.chip.dim{color:var(--muted);opacity:.75;border-style:dashed;background:transparent}
+.chip.part{border-style:dashed;color:var(--ink)}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin:20px 0}
+.res .card{box-shadow:none}
+.res .val{font-size:26px}
+.res .lbl{font-size:9.5px}
+.res-hero{background:var(--acc);border-radius:20px;padding:24px;box-shadow:0 4px 14px rgba(37,99,235,.22);margin-top:20px}
+.res-hero .lbl{color:rgba(255,255,255,.9)}
+.res-hero .kdot{background:#fff;border-color:#fff}
+.res-hero .val{font-size:48px;color:#fff;line-height:1}
+.res-hero .val small{color:rgba(255,255,255,.85)}
+.res-hero .note{color:rgba(255,255,255,.8);font-size:11px}
+.bars{display:grid;gap:14px}
+.bar-row{display:grid;grid-template-columns:100px 1fr 86px;gap:12px;align-items:center;font-size:10px;
+  color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.track{height:14px;background:var(--surface);border-radius:10px;overflow:hidden}
+.track i{display:block;height:100%;width:0;background:var(--acc);transition:width .5s ease}
+.track i.need{background:var(--c-b)}
+.bar-row b{text-align:right;font-weight:600;color:var(--ink);font-size:11.5px;letter-spacing:0}
+.verdict{display:inline-flex;align-items:center;gap:10px;margin-top:20px;padding:10px 16px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--line);
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.verdict::before{content:"";width:9px;height:9px;background:currentColor;flex:none;border-radius:50%}
+.verdict.ok{background:rgba(5,150,105,.08);color:var(--ok);border-color:rgba(5,150,105,.2)}
+.verdict.low{background:rgba(220,38,38,.08);color:var(--bad);border-color:rgba(220,38,38,.2)}
+pre.form{margin:0;white-space:pre-wrap;font:11px/1.8 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.warn{border-radius:14px;background:var(--surface);padding:12px 16px;margin:16px 0 0;
+  color:var(--muted);font-size:11px;line-height:1.65;
+  border-left:4px solid var(--acc);border:1px solid var(--line)}
+.flash{animation:flash .5s ease}
+@keyframes flash{from{opacity:.5}to{opacity:1}}
+.ov{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;
+  background:rgba(15,23,42,.45)}
+.ov.on{display:flex}
+.dlg{width:100%;max-width:420px;background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:24px;
+  box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.dlg h3{margin:0 0 6px;font-size:15px;font-weight:600}
+.dlg p{margin:0 0 16px;color:var(--muted);font-size:12px;line-height:1.55}
+.dlg .in.bad{border-color:var(--bad);box-shadow:0 0 0 4px rgba(220,38,38,.12)}
+.dlg .err{min-height:18px;margin:6px 0 0;color:var(--bad);font-size:11px;font-weight:500}
+.dlg .act{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.pri:hover{background:var(--acc);color:#fff;opacity:.9}
+@media (max-width:980px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;overflow:visible;border-right:0;border-bottom:1px solid var(--line);gap:16px}
+  #tabs{flex-direction:row;flex-wrap:wrap}
+  #tabs button{width:auto;border-left:none;border-radius:10px}
+  #tabs button.act{box-shadow:none}
+  .side-foot{margin-top:0;flex-direction:row;align-items:center;flex-wrap:wrap}
+  .side-foot>div{flex:1 1 220px}
+  .cgrid{grid-template-columns:1fr}
+  .charts{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .main{padding:22px 20px 60px}
+  .lhead{display:none}
+  .lrow{grid-template-columns:1fr 1fr 1fr}
+  .lrow>:first-child{grid-column:1/-1}
+  .pgrid{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+}
+@media (prefers-reduced-motion:reduce){.flash{animation:none}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+<symbol id="i-mon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1"/><path d="M8 21h8M12 17v4"/></symbol>
+<symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/></symbol>
+</defs></svg>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <span class="logo"><svg class="ic"><use href="#i-sun"/></svg></span>
+      <div><b>SolarMeter</b><small>panel surya</small></div>
+    </div>
+
+    <div>
+      <div class="nlbl">Menu</div>
+      <nav id="tabs">
+        <button data-v="mon" class="act"><svg class="ic"><use href="#i-mon"/></svg>Monitoring</button>
+        <button data-v="calc"><svg class="ic"><use href="#i-calc"/></svg>Kalkulator</button>
+      </nav>
+    </div>
+
+    <div class="side-foot">
+      <div>
+        <div class="nlbl">Status perangkat</div>
+        <div class="sstat"><span class="dot" id="dot"></span><span id="status">Memuat data…</span></div>
+      </div>
+      <button id="live" title="Jeda atau lanjutkan pembaruan otomatis"><span class="dot on" id="ldot"></span><span id="ltxt">Live</span></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div>
+        <h1 id="ptitle">Monitoring</h1>
+        <p class="psub" id="psub">Pantau 6 metrik utama panel surya</p>
+      </div>
+      <div class="tools">
+        <div class="seg" id="range">
+          <button data-r="today" class="act">Hari ini</button>
+          <button data-r="24h">24 jam</button>
+          <button data-r="7d">7 hari</button>
+          <button data-r="all">Semua</button>
+        </div>
+        <input type="date" id="day" class="btn" aria-label="Pilih tanggal">
+        <div class="seg" id="theme">
+          <button data-t="light">Terang</button>
+          <button data-t="dark">Gelap</button>
+        </div>
+        <button class="btn" id="refresh"><svg class="ic"><use href="#i-refresh"/></svg>Muat ulang</button>
+      </div>
+    </header>
+
+  <div id="view-mon">
+    <div class="banner hidden" id="banner"></div>
+
+    <!-- Fokus: 6 metrik utama -->
+    <section class="kpis">
+      <div class="card kpi key" style="--k:var(--acc)">
+        <div class="lbl"><span class="kdot"></span>PGF <span class="tag" id="k-pgfd"></span></div>
+        <div class="val"><span id="k-pgf">–</span><small>jam</small></div>
+        <div class="note">Energi harian &divide; kapasitas panel (10 Wp)</div>
+      </div>
+      <div class="card kpi key" style="--k:var(--acc)">
+        <div class="lbl"><span class="kdot"></span>PR <span class="tag" id="k-prd"></span></div>
+        <div class="val"><span id="k-pr">–</span><small>%</small></div>
+        <div class="note">Terhadap HSP referensi 4,15 jam</div>
+      </div>
+      <div class="card kpi" style="--k:var(--c-v)">
+        <div class="lbl"><span class="kdot"></span>V pv (tegangan panel)</div>
+        <div class="val"><span id="k-v">–</span><small>V</small></div>
+      </div>
+      <div class="card kpi" style="--k:var(--c-i)">
+        <div class="lbl"><span class="kdot"></span>I pv (arus panel)</div>
+        <div class="val"><span id="k-i">–</span><small>A</small></div>
+      </div>
+      <div class="card kpi" style="--k:var(--acc)">
+        <div class="lbl"><span class="kdot"></span>P pv (daya panel)</div>
+        <div class="val"><span id="k-p">–</span><small>W</small></div>
+      </div>
+      <div class="card kpi" style="--k:var(--c-b)">
+        <div class="lbl"><span class="kdot"></span>V bat (tegangan baterai)</div>
+        <div class="val"><span id="k-b">–</span><small>V</small></div>
+      </div>
+      <div class="card kpi key" style="--k:var(--acc)">
+        <div class="lbl"><span class="kdot"></span>Total energi masuk <span class="tag" id="k-ed"></span></div>
+        <div class="val"><span id="k-e">–</span><small>Wh</small></div>
+        <div class="note" id="k-enote">Akumulasi sejak 00:00, reset tiap hari</div>
+      </div>
+    </section>
+
+    <!-- Grafik arus & tegangan panel terhadap waktu -->
+    <section class="charts">
+      <div class="card">
+        <div class="chead"><h2>Tegangan panel terhadap waktu</h2><span class="hint">V pv &middot; titik data tiap 5 menit</span></div>
+        <div class="ch"><canvas id="c-v"></canvas><div class="em" id="e-v">Tidak ada data pada rentang ini</div></div>
+      </div>
+      <div class="card">
+        <div class="chead"><h2>Arus panel terhadap waktu</h2><span class="hint">I pv &middot; titik data tiap 5 menit</span></div>
+        <div class="ch"><canvas id="c-i"></canvas><div class="em" id="e-i">Tidak ada data pada rentang ini</div></div>
+      </div>
+      <div class="card">
+        <div class="chead"><h2>Daya panel terhadap waktu</h2><span class="hint">P pv &middot; titik data tiap 5 menit</span></div>
+        <div class="ch"><canvas id="c-p"></canvas><div class="em" id="e-p">Tidak ada data pada rentang ini</div></div>
+      </div>
+      <div class="card">
+        <div class="chead"><h2>Total energi masuk terhadap waktu</h2><span class="hint">Wh &middot; reset tiap hari pukul 00:00</span></div>
+        <div class="ch"><canvas id="c-e"></canvas><div class="em" id="e-e">Tidak ada data pada rentang ini</div></div>
+      </div>
+    </section>
+
+    <!-- Tabel riwayat -->
+    <section class="card">
+      <div class="tbl-head">
+        <h2>Data historis <span id="count"></span></h2>
+        <button class="btn" id="csv"><svg class="ic"><use href="#i-download"/></svg>Unduh CSV</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead id="thead"><tr>
+            <th data-k="t" data-dir="-1">Waktu</th>
+            <th data-k="v">V pv (V)</th>
+            <th data-k="i">I pv (A)</th>
+            <th data-k="p">P pv (W)</th>
+            <th data-k="vb">V bat (V)</th>
+            <th data-k="e">E masuk (Wh)</th>
+            <th data-k="pgf">PGF (h)</th>
+            <th data-k="pr">PR (%)</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Kalkulator panel -->
+  <div id="view-calc" class="hidden">
+    <section class="cgrid">
+      <div>
+        <!-- Langkah 1: beban -->
+        <div class="card">
+          <div class="step-h"><span class="step-n">1</span><h2>Beban harian</h2>
+            <span class="step-sub">isi perangkat yang dipakai</span></div>
+          <div class="lhead"><span>Nama</span><span>Jml</span><span>Daya (W)</span><span>Jam/hari</span><span style="text-align:right">Wh/hari</span><span></span></div>
+          <div id="loads"></div>
+          <button class="btn" id="addload">+ Tambah beban</button>
+          <div class="totbar">
+            <div><span class="tl">Total energi</span><b id="r-eload">–</b><small>Wh/hari</small></div>
+            <div><span class="tl">Beban serentak</span><b id="r-pload">–</b><small>W</small></div>
+          </div>
+        </div>
+
+        <!-- Langkah 2: parameter -->
+        <div class="card" style="margin-top:14px">
+          <div class="step-h"><span class="step-n">2</span><h2>Parameter sistem</h2>
+            <span class="step-sub">sesuaikan instalasi Anda</span></div>
+          <div class="pgrid">
+            <div class="fld"><label for="cv">Tegangan sistem</label><select class="in" id="cv"><option>12</option><option>24</option><option>48</option></select><div class="hintx" id="cvhint"></div></div>
+            <div class="fld"><label for="ceta">Efisiensi setelah titik ukur (%)</label><input class="in" id="ceta" type="number" min="0" step="any" value="75"><div class="hintx">Controller, baterai, inverter. Turunkan jika ada rugi kabel.</div></div>
+            <div class="fld"><label for="cmar">Cadangan desain (%)</label><input class="in" id="cmar" type="number" min="0" step="any" value="10"></div>
+            <div class="fld"><label for="caut">Hari otonomi baterai</label><input class="in" id="caut" type="number" min="0" step="any" value="1"></div>
+            <div class="fld"><label for="cdod">DoD baterai (%)</label><input class="in" id="cdod" type="number" min="0" step="any" value="50"><div class="hintx">Timbal-asam &plusmn;50%, LiFePO4 &plusmn;80%.</div></div>
+            <div class="fld"><label for="cpw">Daya per panel (Wp)</label><input class="in" id="cpw" type="number" min="0" step="any" value="100"></div>
+            <div class="fld"><label for="cbasis">Dasar yield</label><select class="in" id="cbasis"><option value="min">Hari terendah (konservatif)</option><option value="avg">Rata-rata</option></select></div>
+            <div class="fld"><label for="cy">Yield manual (jam/hari)</label><input class="in" id="cy" type="number" min="0" step="any" value="" placeholder="otomatis dari data"><div class="hintx">Isi untuk mengganti yield dari data.</div></div>
+            <div class="fld chk"><input type="checkbox" id="cac"><label for="cac" style="margin:0;font-size:13.5px;color:var(--ink)">Beban AC (pakai inverter)</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <!-- Langkah 3: hasil -->
+        <div class="step-h"><span class="step-n">3</span><h2>Hasil kebutuhan</h2>
+          <span class="step-sub">dihitung dari yield data & parameter</span></div>
+
+        <div class="card kpi" style="--k:var(--acc)">
+          <div class="lbl"><span class="kdot"></span>Yield dari data Anda</div>
+          <div class="val"><span id="r-y">–</span><small>jam/hari</small></div>
+          <div class="chips" id="ydays"></div>
+          <div class="note" id="ynote"></div>
+        </div>
+
+        <div class="card kpi res-hero" style="--k:var(--acc)">
+          <div class="lbl"><span class="kdot"></span>Panel surya yang dibutuhkan</div>
+          <div class="val"><span id="r-wp">–</span><small>Wp</small></div>
+          <div class="note"><b id="r-np">–</b> panel &times; <span id="r-pw">–</span> Wp = <b id="r-wpi">–</b> Wp terpasang</div>
+        </div>
+
+        <div class="res">
+          <div class="card kpi" style="--k:var(--c-b)"><div class="lbl"><span class="kdot"></span>Baterai</div>
+            <div class="val"><span id="r-ah">–</span><small>Ah</small></div>
+            <div class="note">pada <span id="r-v">–</span> V &middot; <b id="r-wh">–</b> Wh</div></div>
+          <div class="card kpi" style="--k:var(--c-i)"><div class="lbl"><span class="kdot"></span>Charge controller</div>
+            <div class="val"><span id="r-ic">–</span><small>A min.</small></div>
+            <div class="note">Perkiraan kasar; cek Isc panel & jenis PWM/MPPT.</div></div>
+          <div class="card kpi" style="--k:var(--c-v)"><div class="lbl"><span class="kdot"></span>Inverter</div>
+            <div class="val"><span id="r-pinv">–</span><small>W min.</small></div>
+            <div class="note" id="r-invnote"></div></div>
+        </div>
+
+        <div class="card">
+          <div class="step-h"><h2>Produksi vs kebutuhan</h2><span class="step-sub">per hari</span></div>
+          <div class="bars">
+            <div class="bar-row"><span>Panel surya</span><div class="track"><i id="bar-h"></i></div><b id="bar-h-v">–</b></div>
+            <div class="bar-row"><span>Beban Anda</span><div class="track"><i id="bar-n" class="need"></i></div><b id="bar-n-v">–</b></div>
+          </div>
+          <div class="verdict" id="r-status">–</div>
+          <div class="note" id="rback">–</div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <div class="step-h"><h2>Perhitungan</h2></div>
+          <pre class="form" id="cform">–</pre>
+          <div class="warn">Yield berasal dari PGF harian pada titik pemasangan INA219, orientasi, suhu, dan cuaca selama data itu direkam. Jika sensor berada setelah charge controller atau daya dibatasi controller, yield terukur cenderung rendah sehingga hasil over-sizing. Beberapa hari data tidak mewakili musim hujan atau kemarau.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+  </main>
+</div>
+
+<div class="ov" id="csvov" role="dialog" aria-modal="true" aria-labelledby="csvt">
+  <div class="dlg">
+    <h3 id="csvt">Unduh data CSV</h3>
+    <p>Isi nama lokasi pengambilan data. Nama ini dicantumkan di kolom <b>Lokasi</b> pada CSV dan di nama file.</p>
+    <label for="csvloc" class="nlbl" style="padding:0">Nama lokasi</label>
+    <input class="in" id="csvloc" type="text" maxlength="80" placeholder="mis. Atap Gedung A, Semarang" autocomplete="off">
+    <div class="err" id="csverr"></div>
+    <div class="act">
+      <button class="btn" id="csvcancel" type="button">Batal</button>
+      <button class="btn pri" id="csvok" type="button"><svg class="ic"><use href="#i-download"/></svg>Unduh</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= KONFIGURASI =================
+const API_URL = 'https://script.google.com/macros/s/AKfycby6v1HC91HJaBSOrW2Oh2FwOwG3XL_C-NXP-yR4JxkOhs9RfSRbnt-dH-xaDmh1nHuJ/exec'; // sama dengan googleScriptUrl di Kode_Test_GOT_CP.ino
+const TOKEN = '';                         // samakan dengan TOKEN di Apps Script (boleh kosong)
+const P_STC = 10;                         // kapasitas panel (Wp)
+const HSP_REF = 4.15;                     // HSP referensi (jam) — samakan dengan HSP_REFERENSI di .ino
+const REFRESH_MS = 60000;                 // muat ulang otomatis (detik)
+const OFFLINE_MIN = 15;                   // dianggap offline jika data lebih tua dari ini
+const FETCH_LIMIT = 2100;                 // batas baris yang diminta
+const FULL_LIMIT = 20000;                 // dipakai bila tanggal yang dipilih lebih lama dari data termuat
+const TABLE_MAX = 200;                    // baris riwayat yang ditampilkan
+// ===============================================
+
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let ALL = [], range = 'today', rangeTouched = false, charts = {}, wantLimit = FETCH_LIMIT;
+
+const pad = n => String(n).padStart(2, '0');
+const fmtT = (t, short) => { const d = new Date(t);
+  return (short ? '' : pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ') + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const num = (x, d) => (x === null || x === undefined || isNaN(x)) ? '–' : Number(x).toFixed(d);
+
+// --- sanitasi data Google Sheets -----------------------------------
+// Sheets kadang mengubah teks saat menulis: "0.553" menjadi 553 (pemisah
+// ribuan), "1.339" menjadi 1339, dan "6.12" menjadi tanggal 6 Desember.
+// Semua dikembalikan ke bentuk semula supaya angka di dashboard akurat.
+const isISODate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v);
+
+function fromSheetDate(iso) {              // "2026-12-05T17:00Z" (WIB 6 Des) -> 6.12
+  const d = new Date(Date.parse(iso) + 7 * 3600e3);   // konversi ke jam WIB
+  const n = Number(d.getUTCDate() + '.' + (d.getUTCMonth() + 1));
+  return isFinite(n) ? n : null;
+}
+function cell(v) {                         // angka dari sel, null jika tidak valid
+  if (v === null || v === undefined || v === '') return null;
+  if (isISODate(v)) return fromSheetDate(v);
+  const n = Number(v);
+  return isFinite(n) ? n : null;
+}
+const clamp = (x, lo, hi) => (x === null || x < lo || x > hi) ? null : x;
+
+function mapRow(r) {
+  const tRaw = (r.t !== undefined && r.t !== '') ? r.t
+    : (r.timestamp !== undefined && r.timestamp !== '') ? r.timestamp
+    : (r.time !== undefined && r.time !== '') ? r.time : r.waktu;
+  const t = isISODate(tRaw) ? Date.parse(tRaw) : Number(tRaw);
+
+  const v = clamp(cell(r.v ?? r.voltase ?? r.voltage), 0, 60);                  // V pv
+  let i = cell(r.i ?? r.arus ?? r.current);                                      // I pv
+  if (i !== null && i >= 1) i /= 1000;                                           // 553 -> 0.553 A
+  i = clamp(i, 0, 20);
+  let p = cell(r.p ?? r.daya ?? r.power);                                        // P pv
+  if (p !== null && p > 1000) p /= 1000;
+  p = clamp(p, 0, 200);
+  const vb = clamp(cell(r.vb ?? r.vbat ?? r.battery), 0.5, 60);                  // V bat (0 = tak terhubung)
+
+  const pr = clamp(cell(r.pr ?? r.PR), 0, 150);                                  // PR (%)
+  let pgf = cell(r.pgf ?? r.PGF);                                                // PGF (jam)
+  if (pgf !== null && pgf > 0 && pr !== null) {                                  // pilih skala yang cocok dengan PR
+    const a = Math.abs(pgf / HSP_REF * 100 - pr);
+    const b = Math.abs(pgf / 1000 / HSP_REF * 100 - pr);
+    if (b < a) pgf /= 1000;
+  } else if (pgf !== null && pgf > 10) {
+    pgf /= 1000;                                                                 // PGF harian mustahil > 10 jam
+  }
+  // Total energi masuk (Wh, reset tiap hari). Nama kolom dicoba beberapa kemungkinan.
+  let e = cell(r.e ?? r.energi ?? r.energy ?? r.wh ?? r.Wh ?? r.etotal ?? r.energi_masuk ??
+               r.total_energi ?? r.energy_in ?? r.ein ?? r.e_in ?? r.energiMasuk ?? r.totalWh);
+  const eMax = P_STC * 24;                                                       // batas fisik per hari
+  if (e !== null) { for (let k = 0; k < 2 && e > eMax; k++) e /= 1000; }         // 1339 -> 1.339
+  e = clamp(e, 0, eMax);
+  return { t, v, i, p, vb, pgf: clamp(pgf, 0, 48), pr, e };
+}
+
+async function fetchRows() {
+  const u = API_URL + '?action=read&limit=' + wantLimit + (TOKEN ? '&token=' + encodeURIComponent(TOKEN) : '');
+  const res = await fetch(u);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const j = await res.json();
+  if (j && j.error) throw new Error(j.error);
+  $('banner').className = 'banner hidden';
+
+  const raw = Array.isArray(j) ? j : (j && Array.isArray(j.rows) ? j.rows : null);
+  if (!raw) throw new Error('Format respons tidak dikenal (tidak ada field "rows")');
+
+  const rows = raw.map(mapRow).filter(r => isFinite(r.t));
+  if (!rows.length && raw.length) throw new Error('Field waktu tidak ditemukan pada data yang dibaca');
+  return rows;
+}
+
+const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+// Bila kolom energi tidak ada di sheet untuk suatu hari, hitung dari integrasi daya (P pv) sejak 00:00.
+function ensureEnergy(rows) {
+  const by = {};
+  rows.forEach(r => (by[dayKey(r.t)] = by[dayKey(r.t)] || []).push(r));
+  Object.values(by).forEach(a => {
+    if (a.some(r => r.e !== null)) return;
+    let cum = 0;
+    a.forEach((r, k) => {
+      if (k > 0) {
+        const q = a[k - 1], dt = (r.t - q.t) / 3600e3;
+        const p0 = q.p ?? ((q.v ?? 0) * (q.i ?? 0)), p1 = r.p ?? ((r.v ?? 0) * (r.i ?? 0));
+        if (dt > 0 && dt <= 0.5) cum += (p0 + p1) / 2 * dt;
+      }
+      r.e = cum; r.ec = true;
+    });
+  });
+  return rows;
+}
+
+async function load() {
+  try {
+    ALL = ensureEnergy((await fetchRows()).filter(r => isFinite(r.t)).sort((a, b) => a.t - b.t));
+    // jika data hari ini kosong (mis. sensor lama), beralih ke "Semua" agar tidak tampak kosong
+    if (!rangeTouched && range === 'today' && ALL.length && !filtered().length) {
+      range = 'all';
+      document.querySelectorAll('#range button').forEach(x => x.classList.toggle('act', x.dataset.r === 'all'));
+    }
+    render();
+  } catch (err) {
+    $('banner').textContent = 'Gagal memuat data: ' + err.message +
+      '. Periksa API_URL, akses Web App "Anyone", dan buka tab Console untuk detail.';
+    $('banner').className = 'banner err';
+    $('dot').className = 'dot off';
+    $('status').textContent = 'Tidak terhubung';
+  }
+}
+
+function filtered() {
+  if (range === 'all') return ALL;
+  if (range === 'date' && $('day').value) {
+    const d = new Date($('day').value + 'T00:00:00').getTime();
+    return ALL.filter(r => r.t >= d && r.t < d + 864e5);
+  }
+  const now = Date.now(); let from;
+  if (range === 'today') { const d = new Date(); d.setHours(0, 0, 0, 0); from = d.getTime(); }
+  else from = now - (range === '24h' ? 1 : 7) * 864e5;
+  return ALL.filter(r => r.t >= from);
+}
+
+function mk(id, defs, unit, zero) {
+  return new Chart($(id), {
+    type: 'line',
+    data: { labels: [], datasets: defs.map(d => ({ label: d.l, _c: d.c, data: [], borderColor: css(d.c),
+      backgroundColor: css(d.c) + '22', borderWidth: 3, pointRadius: 0, tension: .35, fill: false, spanGaps: true })) },
+    options: { responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 40 } },   // ruang untuk label titik data terakhir di ujung sumbu
+      animation: matchMedia('(prefers-reduced-motion:reduce)').matches ? false : { duration: 600, easing: 'easeOutQuart' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: defs.length > 1, labels: { boxWidth: 8, usePointStyle: true, color: css('--muted') } },
+        tooltip: { backgroundColor: css('--ink'), titleColor: css('--bg'), bodyColor: css('--bg'),
+          borderColor: css('--line'), borderWidth: 2, cornerRadius: 2, padding: 10, titleFont: { weight: '700' },
+          callbacks: { label: c => c.dataset.label + ': ' + Number(c.parsed.y).toFixed(unit === 'A' ? 3 : 2) + ' ' + unit } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 6, maxRotation: 0, color: css('--muted'), font: { size: 11 } },
+             // setelah update: ganti tick terakhir agar titik data terakhir (mis. 22/10) ikut terlabel
+             afterUpdate: sc => {
+               try {
+                 const tk = sc.ticks;
+                 const labels = (sc.chart && sc.chart.data && sc.chart.data.labels) || [];
+                 const n = labels.length;
+                 if (!Array.isArray(tk) || !tk.length || n < 2) return;
+                 const last = tk[tk.length - 1];
+                 const isObj = last && typeof last === 'object';
+                 const lastVal = isObj ? last.value : tk.length - 1;
+                 if (!(lastVal >= 0) || lastVal === n - 1) return;
+                 const ca = sc.chart.chartArea;
+                 const w = ca ? (ca.right - ca.left) / n : 4;
+                 // bila tick terakhir terlalu dekat dengan ujung, buang agar label baru tidak bertumpuk
+                 if ((n - 1 - lastVal) * w < 72 && tk.length > 1) tk.pop();
+                 tk.push(isObj ? { value: n - 1, label: labels[n - 1] } : labels[n - 1]);
+               } catch (e) { /* abaikan bila skala belum siap */ }
+             },
+             grid: { display: false }, border: { color: css('--line') } },
+        y: { title: { display: true, text: unit, color: css('--muted'), font: { size: 11 } },
+             ticks: { color: css('--muted'), font: { size: 11 } },
+             grid: { color: css('--soft') }, border: { display: false }, beginAtZero: !!zero } } }
+  });
+}
+
+function setChart(c, labels, series) {
+  c.data.labels = labels;
+  series.forEach((s, k) => c.data.datasets[k].data = s);
+  c.update();
+}
+
+function render() {
+  const rows = filtered(), last = ALL[ALL.length - 1], sel = rows[rows.length - 1];
+
+  if (last) {
+    const age = (Date.now() - last.t) / 60000;
+    const on = age <= OFFLINE_MIN;
+    $('dot').className = 'dot ' + (on ? 'on' : 'off');
+    $('status').textContent = (on ? 'Terhubung' : 'Tidak ada data baru') + ' · data terakhir ' + fmtT(last.t);
+  } else { $('status').textContent = 'Belum ada data'; }
+
+  // metrik fokus mengikuti tanggal/rentang yang dipilih (data terakhir pada rentang itu)
+  const today = sel && new Date(sel.t).toDateString() === new Date().toDateString();
+  tween('k-pgf', sel?.pgf, 3);
+  tween('k-pr', sel?.pr, 1);
+  const dtag = sel ? pad(new Date(sel.t).getDate()) + '/' + pad(new Date(sel.t).getMonth() + 1) : '–';
+  ['k-pgf', 'k-pr', 'k-e'].forEach(id => $(id).classList.toggle('stale', !today));
+  ['k-pgfd', 'k-prd', 'k-ed'].forEach(id => {
+    $(id).textContent = today ? 'hari ini' : dtag;
+    $(id).classList.toggle('today', !!today);
+  });
+  tween('k-v', sel?.v, 2);
+  tween('k-i', sel?.i, 3);
+  tween('k-p', sel?.p, 2);
+  tween('k-b', sel?.vb, 2);
+  tween('k-e', sel?.e, 2);
+  $('k-enote').textContent = 'Akumulasi sejak 00:00, reset tiap hari' + (sel?.ec ? ' (dihitung dari P pv)' : '');
+  calcRun();
+
+  // grafik tegangan & arus panel terhadap waktu (data tiap 5 menit)
+  const short = range === 'today' || range === 'date';
+  const lb = rows.map(r => fmtT(r.t, short));
+  setChart(charts.v, lb, [rows.map(r => r.v)]);
+  setChart(charts.i, lb, [rows.map(r => r.i)]);
+  setChart(charts.p, lb, [rows.map(r => r.p)]);
+  $('e-p').className = 'em' + (rows.length ? '' : ' on');
+  setChart(charts.e, lb, [rows.map(r => r.e)]);
+  $('e-e').className = 'em' + (rows.length ? '' : ' on');
+  $('e-v').className = 'em' + (rows.length ? '' : ' on');
+  $('e-i').className = 'em' + (rows.length ? '' : ' on');
+
+  // tabel riwayat (bisa diurutkan)
+  const key = x => x == null ? -1e18 : x;
+  const shown = rows.slice().sort((a, b) => (key(a[sort.k]) - key(b[sort.k])) * sort.d).slice(0, TABLE_MAX);
+  document.querySelectorAll('#thead th').forEach(th => th.dataset.dir = th.dataset.k === sort.k ? sort.d : '');
+  $('rows').innerHTML = shown.map(r =>
+    `<tr><td>${fmtT(r.t)}</td><td>${num(r.v, 2)}</td><td>${num(r.i, 3)}</td><td>${num(r.p, 2)}</td>` +
+    `<td>${num(r.vb, 2)}</td><td>${num(r.e, 2)}</td><td>${num(r.pgf, 3)}</td><td>${num(r.pr, 1)}</td></tr>`).join('') ||
+    '<tr><td colspan="8" style="text-align:center;color:var(--muted)">Belum ada data pada rentang ini.</td></tr>';
+  $('count').textContent = `(${rows.length} data${rows.length > TABLE_MAX ? ', ' + TABLE_MAX + ' terbaru ditampilkan' : ''})`;
+}
+
+const csvCell = v => { v = String(v ?? ''); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+function openCSV() {
+  let loc = ''; try { loc = localStorage.getItem('sv-loc') || ''; } catch (e) {}
+  $('csvloc').value = loc; $('csvloc').classList.remove('bad'); $('csverr').textContent = '';
+  $('csvov').classList.add('on'); setTimeout(() => { $('csvloc').focus(); $('csvloc').select(); }, 30);
+}
+function closeCSV() { $('csvov').classList.remove('on'); }
+function downloadCSV() {
+  const loc = $('csvloc').value.trim();
+  if (!loc) {                                   // lokasi wajib diisi
+    $('csvloc').classList.add('bad'); $('csverr').textContent = 'Nama lokasi wajib diisi.'; $('csvloc').focus(); return;
+  }
+  try { localStorage.setItem('sv-loc', loc); } catch (e) {}
+  const rows = filtered();
+  const head = 'Lokasi,Waktu,Vpv_V,Ipv_A,Ppv_W,Vbat_V,Energi_Wh,PGF_h,PR_pct\n';
+  const body = rows.map(r => [csvCell(loc), new Date(r.t).toISOString(), r.v, r.i, r.p, r.vb ?? '', r.e ?? '', r.pgf, r.pr].join(',')).join('\n');
+  const slug = loc.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'lokasi';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + head + body], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'solarmeter_' + slug + '_' + range + '.csv';
+  a.click(); closeCSV();
+}
+
+// ---- tema terang / gelap ----
+function restyleCharts() {
+  Object.values(charts).forEach(c => {
+    c.data.datasets.forEach(d => { d.borderColor = css(d._c); d.backgroundColor = css(d._c) + '22'; });
+    const o = c.options, m = css('--muted'), l = css('--line'), s = css('--soft');
+    o.plugins.legend.labels.color = m;
+    o.plugins.tooltip.backgroundColor = css('--ink'); o.plugins.tooltip.titleColor = css('--bg');
+    o.plugins.tooltip.bodyColor = css('--bg'); o.plugins.tooltip.borderColor = l;
+    o.scales.x.ticks.color = m; o.scales.x.border.color = l;
+    o.scales.y.ticks.color = m; o.scales.y.title.color = m; o.scales.y.grid.color = s;
+    c.update();
+  });
+}
+function setTheme(t, save) {
+  document.documentElement.dataset.theme = t;
+  document.querySelectorAll('#theme button').forEach(b => b.classList.toggle('act', b.dataset.t === t));
+  if (save) { try { localStorage.setItem('sv-theme', t); } catch (e) {} }
+  if (charts.v) restyleCharts();
+}
+function initTheme() {
+  let t = null;
+  try { t = localStorage.getItem('sv-theme'); } catch (e) {}
+  if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+  setTheme(t, false);
+}
+
+// ---- kalkulator kebutuhan panel ----
+const CP = ['cv', 'ceta', 'cmar', 'caut', 'cdod', 'cpw', 'cbasis', 'cy'];
+const calc = { loads: [{ n: 'Beban 1', q: 1, w: 50, h: 24 }] };
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function loadCalc() {
+  try {
+    const j = JSON.parse(localStorage.getItem('sv-calc') || 'null');
+    if (!j) return;
+    if (Array.isArray(j.loads) && j.loads.length) calc.loads = j.loads;
+    if (j.p) CP.forEach(id => { if (j.p[id] !== undefined) $(id).value = j.p[id]; });
+    $('cac').checked = !!j.ac;
+  } catch (e) {}
+}
+function saveCalc() {
+  try { localStorage.setItem('sv-calc', JSON.stringify({ loads: calc.loads, ac: $('cac').checked,
+    p: Object.fromEntries(CP.map(id => [id, $(id).value])) })); } catch (e) {}
+}
+function renderLoads() {
+  $('loads').innerHTML = calc.loads.map((l, i) =>
+    `<div class="lrow"><input class="in" data-i="${i}" data-f="n" value="${esc(l.n)}" aria-label="Nama beban" placeholder="Nama">` +
+    `<input class="in" type="number" min="0" step="1" data-i="${i}" data-f="q" value="${l.q}" aria-label="Jumlah" placeholder="Jml">` +
+    `<input class="in" type="number" min="0" step="any" data-i="${i}" data-f="w" value="${l.w}" aria-label="Daya (W)" placeholder="Daya W">` +
+    `<input class="in" type="number" min="0" max="24" step="any" data-i="${i}" data-f="h" value="${l.h}" aria-label="Jam per hari" placeholder="Jam/hari">` +
+    `<span class="lwh">–</span><button class="btn ib" data-del="${i}" aria-label="Hapus beban">&#215;</button></div>`).join('');
+}
+function dayStats() {   // yield harian = PGF maks per hari; hari dinilai dari cakupan waktunya
+  const by = {};
+  ALL.forEach(r => { const d = new Date(r.t), k = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); (by[k] = by[k] || []).push(r); });
+  return Object.keys(by).sort().map(k => {
+    const a = by[k], f = new Date(a[0].t), l = new Date(a[a.length - 1].t);
+    const fh = f.getHours() + f.getMinutes() / 60, lh = l.getHours() + l.getMinutes() / 60;
+    const span = Math.max(0, lh - fh);
+    return { k, y: Math.max(...a.map(r => r.pgf)), n: a.length, span,
+      complete: fh <= 7 && lh >= 18,               // aktif penuh pagi–sore
+      usable: span >= 4 && a.length >= 20 };        // cakupan lumayan (parsial)
+  });
+}
+function setBars(produksi, beban, cukup) {
+  const mx = Math.max(produksi, beban, 1);
+  $('bar-h').style.width = (produksi / mx * 100).toFixed(1) + '%';
+  $('bar-n').style.width = (beban / mx * 100).toFixed(1) + '%';
+  $('bar-h-v').textContent = produksi > 0 ? num(produksi, 0) + ' Wh' : '–';
+  $('bar-n-v').textContent = beban > 0 ? num(beban, 0) + ' Wh' : '–';
+  const v = $('r-status');
+  if (cukup === null) { v.className = 'verdict'; v.textContent = 'Menunggu data'; return; }
+  v.className = 'verdict ' + (cukup ? 'ok' : 'low');
+  v.textContent = cukup ? 'Panel mencukupi untuk beban Anda'
+    : 'Kurang ' + num((1 - produksi / beban) * 100, 0) + '% dari kebutuhan beban';
+}
+function calcRun() {
+  const g = id => parseFloat($(id).value), L = calc.loads;
+  const Eload = L.reduce((s, l) => s + l.q * l.w * l.h, 0), Pload = L.reduce((s, l) => s + l.q * l.w, 0);
+  document.querySelectorAll('.lwh').forEach((el, i) => { if (L[i]) el.textContent = num(L[i].q * L[i].w * L[i].h, 0); });
+  tween('r-eload', Eload, 0); tween('r-pload', Pload, 0);
+
+  const vbs = ALL.map(r => r.vb).filter(x => x > 5).sort((a, b) => a - b);
+  $('cvhint').textContent = vbs.length ? 'V baterai terukur ±' + num(vbs[Math.floor(vbs.length / 2)], 1) + ' V' : '';
+
+  const days = dayStats(), full = days.filter(d => d.complete && d.y > 0),
+    part = days.filter(d => !d.complete && d.usable && d.y > 0), manual = g('cy');
+  let Y = null, note = '';
+  if (manual > 0) { Y = manual; note = 'Memakai yield manual.'; }
+  else if (full.length) {
+    const ys = full.map(d => d.y);
+    Y = $('cbasis').value === 'min' ? Math.min(...ys) : ys.reduce((a, b) => a + b, 0) / ys.length;
+    note = (full.length >= 7 ? 'Data cukup' : full.length >= 3 ? 'Data terbatas' : 'Data sangat terbatas') +
+      ': ' + full.length + ' hari lengkap (aktif sejak pagi sampai sore). Hari tidak lengkap tidak dipakai.';
+  } else if (part.length) {
+    // tidak ada hari penuh: pakai hari dengan cakupan terbaik agar hitungan tetap jalan
+    const best = part.slice().sort((a, b) => b.span - a.span)[0];
+    Y = best.y;
+    note = 'Belum ada hari penuh (pagi–sore). Memakai hari dengan cakupan terbaik: ' +
+      best.k.slice(8) + '/' + best.k.slice(5, 7) + ' — ' + num(best.span, 1) + ' jam, ' + best.n +
+      ' titik data, yield ' + num(best.y, 2) + ' jam. Yield bisa kurang karena pagi/sore belum tercatat; ' +
+      'isi yield manual bila perlu.';
+  } else note = 'Belum ada data yang cukup untuk yield otomatis. Isi yield manual di atas.';
+  const last = days.slice(-7),
+    usedDays = last.filter(d => d.y > 0 && (d.complete || d.usable)),
+    otherDays = last.filter(d => !(d.y > 0 && (d.complete || d.usable)));
+  $('ydays').innerHTML = (usedDays.map(d =>
+    `<span class="chip ${d.complete ? '' : 'part'}" title="${d.complete ? 'Hari lengkap (pagi–sore)' : 'Cakupan parsial ' + num(d.span, 1) + ' jam'}">${d.k.slice(8)}/${d.k.slice(5, 7)} · ${num(d.y, 2)} h</span>`).join('') +
+    (otherDays.length ? `<span class="chip dim" title="Cakupan terlalu sedikit atau yield nol: ${otherDays.map(d => d.k.slice(8) + '/' + d.k.slice(5, 7)).join(', ')}">+${otherDays.length} hari lain</span>` : '')) ||
+    '<span class="note">Belum ada data</span>';
+  $('ynote').textContent = note;
+  tween('r-y', Y, 2);
+
+  const eta = g('ceta') / 100, mar = 1 + (g('cmar') || 0) / 100, V = g('cv'), aut = g('caut'), dod = g('cdod') / 100, pw = g('cpw');
+  const valid = Y > 0 && Eload > 0 && eta > 0 && dod > 0 && pw > 0 && V > 0 && aut >= 0;
+  const ac = $('cac').checked;
+  $('r-invnote').textContent = ac ? 'Beban serentak × 1,25' : 'Tidak diperlukan (beban DC)';
+  if (!valid) {
+    ['r-wp', 'r-np', 'r-wpi', 'r-ah', 'r-wh', 'r-ic', 'r-pinv'].forEach(id => tween(id, null, 0));
+    $('r-pw').textContent = '–'; $('r-v').textContent = '–';
+    $('rback').textContent = Y > 0 ? 'Lengkapi beban dan parameter.' : 'Menunggu yield dari data.';
+    $('cform').textContent = '–'; setBars(0, 0, null); return;
+  }
+  const Wp = Eload / (eta * Y) * mar, np = Math.ceil(Wp / pw - 1e-9), Wpi = np * pw;
+  const Wh = Eload / eta * aut / dod, Ah = Wh / V, Ic = Wpi / V * 1.25, Pinv = Pload * 1.25;
+  tween('r-wp', Wp, 0); tween('r-np', np, 0); tween('r-wpi', Wpi, 0);
+  tween('r-ah', Ah, 0); tween('r-wh', Wh, 0); tween('r-ic', Ic, 1);
+  tween('r-pinv', ac ? Pinv : null, 0);
+  $('r-pw').textContent = num(pw, 0); $('r-v').textContent = num(V, 0);
+
+  const Eav = Y * P_STC * eta;
+  $('rback').textContent = 'Panel ' + P_STC + ' Wp menghasilkan sekitar ' + num(Eav, 1) + ' Wh/hari ke beban, setara beban rata-rata ' +
+    num(Eav / 24, 1) + ' W (24 jam). Beban Anda ' + num(Eload / 24, 1) + ' W rata-rata, jadi panel ini ' +
+    (Eav >= Eload ? 'mencukupi.' : 'memenuhi sekitar ' + num(Eav / Eload * 100, 0) + '% kebutuhan.');
+  setBars(Eav, Eload, Eav >= Eload);
+  $('cform').textContent =
+    'Energi beban = ' + num(Eload, 0) + ' Wh/hari\n' +
+    'Panel   Wp = E ÷ (η × Y) × cadangan = ' + num(Eload, 0) + ' ÷ (' + num(eta, 2) + ' × ' + num(Y, 2) + ') × ' + num(mar, 2) + ' = ' + num(Wp, 0) + ' Wp\n' +
+    'Baterai Wh = E ÷ η × hari ÷ DoD = ' + num(Eload, 0) + ' ÷ ' + num(eta, 2) + ' × ' + aut + ' ÷ ' + num(dod, 2) + ' = ' + num(Wh, 0) + ' Wh;  Ah = Wh ÷ V = ' + num(Ah, 0) + ' Ah\n' +
+    'Controller I = Wp terpasang ÷ V × 1,25 = ' + num(Wpi, 0) + ' ÷ ' + V + ' × 1,25 = ' + num(Ic, 1) + ' A' +
+    (ac ? '\nInverter P = beban serentak × 1,25 = ' + num(Pinv, 0) + ' W' : '');
+}
+
+// ---- animasi angka ----
+const tw = {};
+function tween(id, to, d) {
+  const el = $(id);
+  if (to === null || to === undefined || isNaN(to)) { el.textContent = '–'; tw[id] = null; return; }
+  const from = tw[id] ?? 0; tw[id] = to;
+  cancelAnimationFrame(el._raf);
+  if (from === to || matchMedia('(prefers-reduced-motion:reduce)').matches) { el.textContent = num(to, d); return; }
+  const t0 = performance.now(), dur = 600;
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  const step = now => {
+    const k = Math.min(1, Math.max(0, (now - t0) / dur)), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = num(from + (to - from) * e, d);
+    if (k < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+
+// ---- interaksi ----
+let sort = { k: 't', d: -1 }, live = true, left = REFRESH_MS / 1000;
+
+initTheme();
+Chart.defaults.font.family = "'Poppins', ui-sans-serif, system-ui, sans-serif";
+charts.v = mk('c-v', [{ l: 'V pv', c: '--c-v' }], 'V', false);
+charts.i = mk('c-i', [{ l: 'I pv', c: '--c-i' }], 'A', true);
+charts.p = mk('c-p', [{ l: 'P pv', c: '--c-p' }], 'W', true);
+charts.e = mk('c-e', [{ l: 'Energi masuk', c: '--ok' }], 'Wh', true);
+charts.e.data.datasets[0].fill = true; charts.e.data.datasets[0].stepped = false;
+
+$('range').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  range = b.dataset.r; rangeTouched = true; $('day').value = '';
+  document.querySelectorAll('#range button').forEach(x => x.classList.toggle('act', x === b));
+  render();
+});
+$('theme').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTheme(b.dataset.t, true); });
+$('refresh').onclick = () => { left = REFRESH_MS / 1000; load(); };
+$('day').addEventListener('change', async () => {
+  if (!$('day').value) return;
+  range = 'date'; rangeTouched = true;
+  document.querySelectorAll('#range button').forEach(x => x.classList.remove('act'));
+  // tanggal lebih lama dari data yang termuat -> minta lebih banyak baris dari server
+  const d0 = new Date($('day').value + 'T00:00:00').getTime();
+  if (wantLimit < FULL_LIMIT && (!ALL.length || d0 < ALL[0].t)) { wantLimit = FULL_LIMIT; await load(); }
+  else render();
+});
+$('live').onclick = () => {
+  live = !live; $('ldot').className = 'dot' + (live ? ' on' : '');
+  if (live) { left = REFRESH_MS / 1000; load(); } else $('ltxt').textContent = 'Jeda';
+};
+$('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('act', x === b));
+  const c = b.dataset.v === 'calc';
+  $('view-mon').classList.toggle('hidden', c); $('view-calc').classList.toggle('hidden', !c);
+  $('ptitle').textContent = c ? 'Kalkulator panel' : 'Monitoring';
+  $('psub').textContent = c ? 'Hitung kebutuhan panel, baterai & controller' : 'Pantau 6 metrik utama panel surya';
+  if (c) calcRun(); else Object.values(charts).forEach(ch => ch.resize());
+});
+$('thead').addEventListener('click', e => {
+  const th = e.target.closest('th'); if (!th) return;
+  sort = sort.k === th.dataset.k ? { k: sort.k, d: -sort.d } : { k: th.dataset.k, d: -1 };
+  render();
+});
+$('csv').onclick = openCSV;
+$('csvok').onclick = downloadCSV;
+$('csvcancel').onclick = closeCSV;
+$('csvloc').addEventListener('input', () => { $('csvloc').classList.remove('bad'); $('csverr').textContent = ''; });
+$('csvloc').addEventListener('keydown', e => { if (e.key === 'Enter') downloadCSV(); });
+$('csvov').addEventListener('click', e => { if (e.target === $('csvov')) closeCSV(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCSV(); });
+
+loadCalc(); renderLoads();
+$('loads').addEventListener('input', e => {
+  const t = e.target, f = t.dataset.f, i = +t.dataset.i; if (!f) return;
+  calc.loads[i][f] = f === 'n' ? t.value : Math.max(0, parseFloat(t.value) || 0);
+  saveCalc(); calcRun();
+});
+$('loads').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  if (calc.loads.length > 1) calc.loads.splice(+b.dataset.del, 1);
+  renderLoads(); saveCalc(); calcRun();
+});
+$('addload').onclick = () => { calc.loads.push({ n: 'Beban ' + (calc.loads.length + 1), q: 1, w: 10, h: 24 }); renderLoads(); saveCalc(); calcRun(); };
+[...CP, 'cac'].forEach(id => $(id).addEventListener('input', () => { saveCalc(); calcRun(); }));
+
+load();
+setInterval(() => {
+  if (!live) return;
+  left--; $('ltxt').textContent = 'Live · ' + left + ' dtk';
+  if (left <= 0) { left = REFRESH_MS / 1000; load(); }
+}, 1000);
+</script>
+</body>
+</html>
